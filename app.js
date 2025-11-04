@@ -1,8 +1,20 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const app = express();
+const fs = require('fs');
+const path = require('path');
 
+const app = express();
 app.use(bodyParser.json());
+
+// Log file path (same folder)
+const LOG_FILE = path.join(__dirname, 'server_logs.txt');
+
+// Helper function to append logs
+function logToFile(label, data) {
+  const timestamp = new Date().toISOString();
+  const logEntry = `\n[${timestamp}] ${label}:\n${data}\n----------------------\n`;
+  fs.appendFileSync(LOG_FILE, logEntry, 'utf8');
+}
 
 // ✅ Root route
 app.get('/', (req, res) => {
@@ -17,20 +29,22 @@ app.get('/webhook', (req, res) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  console.log('🔍 Verification request received:', { mode, token, challenge });
+  const logData = JSON.stringify({ mode, token, challenge }, null, 2);
+  logToFile('🔍 Verification request received', logData);
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    console.log('✅ Verified successfully!');
+    logToFile('✅ Verification success', challenge);
     res.status(200).send(challenge);
   } else {
-    console.log('❌ Verification failed');
+    logToFile('❌ Verification failed', 'Token mismatch or invalid mode');
     res.sendStatus(403);
   }
 });
 
 // ✅ Receive messages (POST)
 app.post('/webhook', (req, res) => {
-  console.log('📩 Webhook message received:', JSON.stringify(req.body, null, 2));
+  const requestBody = JSON.stringify(req.body, null, 2);
+  logToFile('📩 Webhook message received', requestBody);
   res.sendStatus(200);
 });
 
